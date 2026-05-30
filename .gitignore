@@ -1,0 +1,16 @@
+.gradle/
+build/
+out/
+*.class
+
+# Local generated jars
+*.jar
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

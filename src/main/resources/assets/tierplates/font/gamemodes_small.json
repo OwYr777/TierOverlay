@@ -1,0 +1,60 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/sword.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF005"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/axe.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF006"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/vanilla.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF000"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/pot.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF002"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/uhc.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF001"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/smp.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF004"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/neth_op.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF003"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/mctiers/mace.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF007"]
+    }
+  ]
+}
