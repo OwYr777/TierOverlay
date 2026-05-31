@@ -2,6 +2,8 @@
 
 TierOverlay is a client-side Fabric mod for Minecraft that displays player tier information from MCtiers, PvPTiers, and Subtiers directly in-game.
 
+It is not tied to NoRisk Client. The mod is built for normal Fabric client profiles on Minecraft 1.21.11 and should work with any launcher/client setup that can load Fabric mods and Fabric API.
+
 ## Features
 
 - Tier badges in nametags, chat, and the tab list
