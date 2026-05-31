@@ -15,12 +15,16 @@ import net.minecraft.text.Text;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
 public final class TierNameplateRenderer {
     private static final int WHITE = 0xFFFFFF;
     private static final int PIPE = 0xDADADA;
+    private static final long RECENT_NAMEPLATE_MS = 900L;
     private static final Map<PlayerEntityRenderState, Optional<Text>> UPPER_LINES = new WeakHashMap<>();
+    private static final Map<UUID, Long> RECENT_NAMEPLATES = new ConcurrentHashMap<>();
 
     private TierNameplateRenderer() {
     }
@@ -28,20 +32,21 @@ public final class TierNameplateRenderer {
     public static void decorateState(PlayerEntity player, PlayerEntityRenderState state) {
         TierPlatesConfig config = TierPlatesClient.config();
         if (!config.enabled || !config.showNametags) {
-            synchronized (UPPER_LINES) {
-                UPPER_LINES.remove(state);
-            }
+            forget(player, state);
             return;
         }
         MinecraftClient client = MinecraftClient.getInstance();
         boolean ownPlayer = client.player != null && player.getUuid().equals(client.player.getUuid());
         if (state.displayName == null && !shouldForceMissingNameplate(config, ownPlayer)) {
+            forget(player, state);
             return;
         }
         if (state.squaredDistanceToCamera > 4096.0D) {
+            forget(player, state);
             return;
         }
         if (client.player != null && player.isInvisibleTo(client.player)) {
+            forget(player, state);
             return;
         }
 
@@ -49,9 +54,7 @@ public final class TierNameplateRenderer {
         Text vanillaName = hasNativeNameplate ? state.displayName : player.getDisplayName();
         Optional<DecoratedName> optionalDecoratedName = decoratedName(player, vanillaName, hasNativeNameplate);
         if (optionalDecoratedName.isEmpty()) {
-            synchronized (UPPER_LINES) {
-                UPPER_LINES.remove(state);
-            }
+            forget(player, state);
             return;
         }
 
@@ -66,6 +69,7 @@ public final class TierNameplateRenderer {
         synchronized (UPPER_LINES) {
             UPPER_LINES.put(state, decoratedName.upper());
         }
+        RECENT_NAMEPLATES.put(player.getUuid(), System.currentTimeMillis());
     }
 
     public static void enforceBeforeRender(PlayerEntityRenderState state) {
@@ -74,6 +78,19 @@ public final class TierNameplateRenderer {
                 state.playerName = UPPER_LINES.get(state).orElse(null);
             }
         }
+    }
+
+    public static boolean hasRecentNameplate(PlayerEntity player) {
+        Long lastRender = RECENT_NAMEPLATES.get(player.getUuid());
+        if (lastRender == null) {
+            return false;
+        }
+
+        boolean recent = System.currentTimeMillis() - lastRender <= RECENT_NAMEPLATE_MS;
+        if (!recent) {
+            RECENT_NAMEPLATES.remove(player.getUuid(), lastRender);
+        }
+        return recent;
     }
 
     private static boolean shouldForceMissingNameplate(TierPlatesConfig config, boolean ownPlayer) {
@@ -108,12 +125,19 @@ public final class TierNameplateRenderer {
             return Optional.empty();
         }
 
-        boolean drawName = hasNativeNameplate && config.showNameInNametag;
+        boolean drawName = config.showNameInNametag;
         Text lower = left.isPresent() || right.isPresent()
                 ? nameLine(vanillaName, left, right, config.showIcons, drawName)
                 : vanillaName;
-        Optional<Text> upper = hasNativeNameplate ? subtier.map(value -> subtierLine(vanillaName, value)) : Optional.empty();
+        Optional<Text> upper = subtier.map(value -> subtierLine(vanillaName, value));
         return Optional.of(new DecoratedName(upper, lower));
+    }
+
+    private static void forget(PlayerEntity player, PlayerEntityRenderState state) {
+        synchronized (UPPER_LINES) {
+            UPPER_LINES.remove(state);
+        }
+        RECENT_NAMEPLATES.remove(player.getUuid());
     }
 
     private static MutableText badge(TierEntry entry, boolean showIcon) {

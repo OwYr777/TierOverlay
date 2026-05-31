@@ -2,15 +2,12 @@ package dev.owyr.tierplates.client.render;
 
 import dev.owyr.tierplates.client.TierPlatesClient;
 import dev.owyr.tierplates.client.config.TierPlatesConfig;
-import dev.owyr.tierplates.client.data.PlayerTierProfile;
-import dev.owyr.tierplates.client.data.TierDataCache;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 
 import java.util.Locale;
-import java.util.Optional;
 
 public final class DuplicateServerTagSuppressor {
     private static final double MAX_HORIZONTAL_DISTANCE_SQUARED = 1.55D;
@@ -50,7 +47,8 @@ public final class DuplicateServerTagSuppressor {
             if (dx * dx + dz * dz > MAX_HORIZONTAL_DISTANCE_SQUARED) {
                 continue;
             }
-            if (matchesPlayerLine(plainLabel, player) || hasTierData(player)) {
+            if (TierNameplateRenderer.hasRecentNameplate(player)
+                    && (matchesPlayerLine(plainLabel, player) || looksLikeStackedNameTagLine(plainLabel))) {
                 return true;
             }
         }
@@ -62,11 +60,6 @@ public final class DuplicateServerTagSuppressor {
         return player != null
                 && player.isAlive()
                 && !player.isInvisibleTo(client.player);
-    }
-
-    private static boolean hasTierData(PlayerEntity player) {
-        Optional<PlayerTierProfile> profile = TierDataCache.getBestEffort(player.getUuid(), player.getNameForScoreboard(), false);
-        return profile.map(PlayerTierProfile::hasAnyData).orElse(false);
     }
 
     private static boolean matchesPlayerLine(String label, PlayerEntity player) {
@@ -99,6 +92,14 @@ public final class DuplicateServerTagSuppressor {
                 && !lower.contains("https://")
                 && !lower.contains("click")
                 && !lower.contains("join");
+    }
+
+    private static boolean looksLikeStackedNameTagLine(String label) {
+        String trimmed = label.trim();
+        return trimmed.length() <= 32
+                && !trimmed.contains(":")
+                && !trimmed.contains("/")
+                && !trimmed.contains("\\");
     }
 
     private static String normalize(String value) {
