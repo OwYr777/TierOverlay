@@ -103,15 +103,39 @@ public final class TierTextFormatter {
             candidates.add(fallbackName);
         }
 
+        Set<String> knownPlayerNames = knownPlayerNames();
         String plain = visibleName == null ? "" : visibleName.getString();
         Matcher matcher = USERNAME_PATTERN.matcher(plain);
         while (matcher.find()) {
             String candidate = matcher.group();
-            if (isPlayerName(candidate)) {
+            if (isPlayerName(candidate) && isKnownPlayerCandidate(candidate, fallbackName, knownPlayerNames)) {
                 candidates.add(candidate);
             }
         }
         return candidates;
+    }
+
+    private static boolean isKnownPlayerCandidate(String candidate, String fallbackName, Set<String> knownPlayerNames) {
+        if (fallbackName != null && candidate.equalsIgnoreCase(fallbackName)) {
+            return true;
+        }
+        return knownPlayerNames.contains(candidate.toLowerCase(Locale.ROOT));
+    }
+
+    private static Set<String> knownPlayerNames() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.getNetworkHandler() == null) {
+            return Set.of();
+        }
+
+        Set<String> names = new LinkedHashSet<>();
+        for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+            String name = entry.getProfile().name();
+            if (isPlayerName(name)) {
+                names.add(name.toLowerCase(Locale.ROOT));
+            }
+        }
+        return names;
     }
 
     private static boolean isPlayerName(String value) {
