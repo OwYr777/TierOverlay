@@ -70,6 +70,7 @@ public final class TierPlatesConfigScreen extends Screen {
     private int panelWidth;
     private int panelHeight;
     private boolean compactLayout;
+    private SettingsPage activePage = SettingsPage.GENERAL;
 
     public TierPlatesConfigScreen(Screen parent) {
         super(Text.literal("TierPlates"));
@@ -79,209 +80,129 @@ public final class TierPlatesConfigScreen extends Screen {
     @Override
     protected void init() {
         TierPlatesConfig config = TierPlatesClient.config();
-        compactLayout = width < 720 || height < 430;
-        panelWidth = compactLayout ? Math.max(320, width - 20) : Math.min(900, width - 44);
-        panelHeight = compactLayout ? Math.max(230, height - 20) : Math.min(500, height - 38);
+        compactLayout = width < 760 || height < 430;
+        panelWidth = compactLayout ? Math.max(320, width - 18) : Math.min(940, width - 44);
+        panelHeight = compactLayout ? Math.max(230, height - 18) : Math.min(520, height - 38);
         panelLeft = (width - panelWidth) / 2;
         panelTop = (height - panelHeight) / 2;
 
-        if (compactLayout) {
-            initCompact(config);
-            return;
+        int controlsX = controlsX();
+        int controlsW = controlsWidth();
+        int tabY = panelTop + (compactLayout ? 48 : 54);
+        int tabGap = compactLayout ? 5 : 8;
+        int tabW = Math.max(64, (controlsW - tabGap * 2) / 3);
+        int tabH = compactLayout ? 22 : 24;
+
+        int tabX = controlsX;
+        for (SettingsPage page : SettingsPage.values()) {
+            addDrawableChild(new PageTabButton(tabX, tabY, tabW, tabH, page, activePage == page, () -> {
+                activePage = page;
+                clearAndInit();
+            }));
+            tabX += tabW + tabGap;
         }
 
-        int rightX = panelLeft + 364;
-        int y = panelTop + 72;
-        int rightW = panelLeft + panelWidth - rightX - 28;
-        int gap = 12;
-        int colW = (rightW - gap) / 2;
-        int row = 34;
+        int controlY = tabY + tabH + (compactLayout ? 28 : 32);
+        int actionY = panelTop + panelHeight - (compactLayout ? 32 : 38);
+        int gap = compactLayout ? 8 : 12;
+        int colW = Math.max(94, (controlsW - gap) / 2);
+        int row = compactLayout ? 32 : 36;
 
-        addOption(rightX, y, colW, "Enabled", () -> enabled(config), () -> {
-            config.enabled = !config.enabled;
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "Icons", () -> onOff(config.showIcons), () -> {
-            config.showIcons = !config.showIcons;
-            saveAndRefresh();
-        });
+        switch (activePage) {
+            case GENERAL -> addGeneralOptions(config, controlsX, controlY, colW, gap, row);
+            case LAYOUT -> addLayoutOptions(config, controlsX, controlY, colW, gap, row);
+            case COLORS -> addColorEditors(controlsX, controlY, controlsW);
+        }
 
-        y += row;
-        addOption(rightX, y, colW, "Nametag", () -> onOff(config.showNametags), () -> {
-            config.showNametags = !config.showNametags;
-            saveAndRefresh();
+        int actionW = Math.max(70, (controlsW - gap * 2) / 3);
+        addOption(controlsX, actionY, actionW, "Reload", () -> "CACHE", () -> {
+            TierDataCache.clear();
+            clearAndInit();
         });
-        addOption(rightX + colW + gap, y, colW, "Tab", () -> onOff(config.showTab), () -> {
-            config.showTab = !config.showTab;
-            saveAndRefresh();
-        });
-
-        y += row;
-        addOption(rightX, y, colW, "Chat", () -> onOff(config.showChat), () -> {
-            config.showChat = !config.showChat;
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "Background", () -> onOff(config.drawBackground), () -> {
-            config.drawBackground = !config.drawBackground;
-            saveAndRefresh();
-        });
-
-        y += row + 12;
-        addWideOption(rightX, y, colW * 2 + gap, "Displayed Tier", () -> config.displayMode.name(), () -> {
-            config.displayMode = config.displayMode.next();
-            saveAndRefresh();
-        });
-
-        y += row;
-        addOption(rightX, y, colW, "MCTiers", () -> config.mctiersSide.name(), () -> {
-            config.mctiersSide = config.mctiersSide.next();
-            fixDuplicateSides(config);
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "PvPTiers", () -> config.pvptiersSide.name(), () -> {
-            config.pvptiersSide = config.pvptiersSide.next();
-            fixDuplicateSides(config);
-            saveAndRefresh();
-        });
-
-        y += row + 12;
-        addOption(rightX, y, colW, "Icon Size", () -> config.iconSize.name(), () -> {
-            config.iconSize = config.iconSize.next();
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "Tag Mode", () -> nameplateModeLabel(config), () -> {
-            config.nameplateMode = config.nameplateMode.next();
-            config.forceNameplates = config.nameplateMode == TierPlatesConfig.NameplateMode.FORCE_ALL;
-            saveAndRefresh();
-        });
-
-        y += row;
-        addWideOption(rightX, y, colW * 2 + gap, "Name In Tag", () -> onOff(config.showNameInNametag), () -> {
-            config.showNameInNametag = !config.showNameInNametag;
-            saveAndRefresh();
-        });
-
-        y += row + 12;
-        addOption(rightX, y, colW, "Demo Preview", () -> onOff(config.useDemoData), () -> {
-            config.useDemoData = !config.useDemoData;
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "Preview Player", () -> config.previewOwnPlayer ? "ME" : previewDisplayName(config), () -> {
-            config.previewOwnPlayer = !config.previewOwnPlayer;
-            saveAndRefresh();
-        });
-
-        addColorEditors();
-
-        int actionY = panelTop + panelHeight - 42;
-        addWideOption(rightX, actionY - 36, colW * 2 + gap, "Reset", () -> "DEFAULTS", () -> {
+        addOption(controlsX + actionW + gap, actionY, actionW, "Reset", () -> "DEFAULTS", () -> {
             TierPlatesClient.resetConfig();
             TierDataCache.clear();
+            activePage = SettingsPage.GENERAL;
             clearAndInit();
         });
-        addOption(rightX, actionY, colW, "Reload", () -> "CACHE", () -> {
-            TierDataCache.clear();
-            clearAndInit();
-        });
-        addOption(rightX + colW + gap, actionY, colW, "Done", () -> "CLOSE", this::close);
+        addOption(controlsX + (actionW + gap) * 2, actionY, actionW, "Done", () -> "CLOSE", this::close);
     }
 
-    private void initCompact(TierPlatesConfig config) {
-        int leftW = 160;
-        int rightX = panelLeft + leftW + 18;
-        int rightW = Math.max(210, panelLeft + panelWidth - rightX - 12);
-        int gap = 7;
-        int colW = Math.max(86, (rightW - gap) / 2);
-        int row = 24;
-        int y = panelTop + 62;
-
-        addOption(rightX, y, colW, "Enable", () -> enabled(config), () -> {
+    private void addGeneralOptions(TierPlatesConfig config, int x, int y, int colW, int gap, int row) {
+        addOption(x, y, colW, "Enable", () -> enabled(config), () -> {
             config.enabled = !config.enabled;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "Icons", () -> onOff(config.showIcons), () -> {
+        addOption(x + colW + gap, y, colW, "Icons", () -> onOff(config.showIcons), () -> {
             config.showIcons = !config.showIcons;
             saveAndRefresh();
         });
 
         y += row;
-        addOption(rightX, y, colW, "Name", () -> onOff(config.showNametags), () -> {
+        addOption(x, y, colW, "Nametag", () -> onOff(config.showNametags), () -> {
             config.showNametags = !config.showNametags;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "Tab", () -> onOff(config.showTab), () -> {
+        addOption(x + colW + gap, y, colW, "Tab", () -> onOff(config.showTab), () -> {
             config.showTab = !config.showTab;
             saveAndRefresh();
         });
 
         y += row;
-        addOption(rightX, y, colW, "Chat", () -> onOff(config.showChat), () -> {
+        addOption(x, y, colW, "Chat", () -> onOff(config.showChat), () -> {
             config.showChat = !config.showChat;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "BG", () -> onOff(config.drawBackground), () -> {
+        addOption(x + colW + gap, y, colW, "Background", () -> onOff(config.drawBackground), () -> {
             config.drawBackground = !config.drawBackground;
             saveAndRefresh();
         });
 
         y += row;
-        addOption(rightX, y, colW, "Tier", () -> config.displayMode.name(), () -> {
-            config.displayMode = config.displayMode.next();
+        addOption(x, y, colW, "Demo", () -> onOff(config.useDemoData), () -> {
+            config.useDemoData = !config.useDemoData;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "Icon", () -> config.iconSize.name(), () -> {
-            config.iconSize = config.iconSize.next();
+        addOption(x + colW + gap, y, colW, "Preview", () -> config.previewOwnPlayer ? "ME" : previewDisplayName(config), () -> {
+            config.previewOwnPlayer = !config.previewOwnPlayer;
+            saveAndRefresh();
+        });
+    }
+
+    private void addLayoutOptions(TierPlatesConfig config, int x, int y, int colW, int gap, int row) {
+        addWideOption(x, y, colW * 2 + gap, "Displayed Tier", () -> config.displayMode.name(), () -> {
+            config.displayMode = config.displayMode.next();
             saveAndRefresh();
         });
 
         y += row;
-        addOption(rightX, y, colW, "MC", () -> config.mctiersSide.name(), () -> {
+        addOption(x, y, colW, "MCTiers", () -> config.mctiersSide.name(), () -> {
             config.mctiersSide = config.mctiersSide.next();
             fixDuplicateSides(config);
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "PvP", () -> config.pvptiersSide.name(), () -> {
+        addOption(x + colW + gap, y, colW, "PvPTiers", () -> config.pvptiersSide.name(), () -> {
             config.pvptiersSide = config.pvptiersSide.next();
             fixDuplicateSides(config);
             saveAndRefresh();
         });
 
         y += row;
-        addOption(rightX, y, colW, "Tag", () -> nameplateModeLabel(config), () -> {
+        addOption(x, y, colW, "Icon Size", () -> config.iconSize.name(), () -> {
+            config.iconSize = config.iconSize.next();
+            saveAndRefresh();
+        });
+        addOption(x + colW + gap, y, colW, "Tag Mode", () -> nameplateModeLabel(config), () -> {
             config.nameplateMode = config.nameplateMode.next();
             config.forceNameplates = config.nameplateMode == TierPlatesConfig.NameplateMode.FORCE_ALL;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "In Tag", () -> onOff(config.showNameInNametag), () -> {
+
+        y += row;
+        addWideOption(x, y, colW * 2 + gap, "Name In Tag", () -> onOff(config.showNameInNametag), () -> {
             config.showNameInNametag = !config.showNameInNametag;
             saveAndRefresh();
         });
-
-        y += row;
-        addOption(rightX, y, colW, "Demo", () -> onOff(config.useDemoData), () -> {
-            config.useDemoData = !config.useDemoData;
-            saveAndRefresh();
-        });
-        addOption(rightX + colW + gap, y, colW, "Preview", () -> config.previewOwnPlayer ? "ME" : previewDisplayName(config), () -> {
-            config.previewOwnPlayer = !config.previewOwnPlayer;
-            saveAndRefresh();
-        });
-
-        y += row;
-        addOption(rightX, y, colW, "Reload", () -> "CACHE", () -> {
-            TierDataCache.clear();
-            clearAndInit();
-        });
-        addOption(rightX + colW + gap, y, colW, "Reset", () -> "DEFAULTS", () -> {
-            TierPlatesClient.resetConfig();
-            TierDataCache.clear();
-            clearAndInit();
-        });
-
-        y += row;
-        addWideOption(rightX, y, colW * 2 + gap, "Done", () -> "CLOSE", this::close);
-
-        addColorEditors();
     }
 
     @Override
@@ -299,26 +220,38 @@ public final class TierPlatesConfigScreen extends Screen {
     }
 
     private void addOption(int x, int y, int width, String label, ValueSupplier value, Runnable action) {
-        addDrawableChild(new ModernOptionButton(x, y, width, compactLayout ? 22 : 30, label, value, action));
+        addDrawableChild(new ModernOptionButton(x, y, width, compactLayout ? 26 : 30, label, value, action));
     }
 
     private void addWideOption(int x, int y, int width, String label, ValueSupplier value, Runnable action) {
-        addDrawableChild(new ModernOptionButton(x, y, width, compactLayout ? 22 : 30, label, value, action));
+        addDrawableChild(new ModernOptionButton(x, y, width, compactLayout ? 26 : 30, label, value, action));
     }
 
-    private void addColorEditors() {
-        int previewX = panelLeft + 12;
-        int previewW = 160;
-        int compactTotalWidth = 10 * 10 + 9 * 4;
-        int startX = compactLayout ? previewX + (previewW - compactTotalWidth) / 2 : panelLeft + 38;
-        int startY = compactLayout ? panelTop + panelHeight - 52 : panelTop + panelHeight - 116;
-        int size = compactLayout ? 14 : 22;
-        int gap = compactLayout ? 4 : 7;
+    private void addColorEditors(int x, int y, int width) {
+        int columns = compactLayout ? 5 : 5;
+        int gap = compactLayout ? 8 : 12;
+        int cellW = (width - gap * (columns - 1)) / columns;
+        int swatchW = Math.min(compactLayout ? 42 : 58, cellW);
+        int swatchH = compactLayout ? 38 : 44;
         for (int i = 0; i < TIER_ORDER.length; i++) {
-            int x = compactLayout ? startX + i * (10 + gap) : startX + i * (size + gap);
-            int y = compactLayout ? startY : startY;
-            addDrawableChild(new ColorSwatchWidget(x, y, compactLayout ? 10 : size, compactLayout ? 10 : 32, TIER_ORDER[i]));
+            int col = i % columns;
+            int row = i / columns;
+            int swatchX = x + col * (cellW + gap) + (cellW - swatchW) / 2;
+            int swatchY = y + row * (swatchH + (compactLayout ? 10 : 14));
+            addDrawableChild(new ColorSwatchWidget(swatchX, swatchY, swatchW, swatchH, TIER_ORDER[i]));
         }
+    }
+
+    private int previewWidth() {
+        return compactLayout ? 166 : 330;
+    }
+
+    private int controlsX() {
+        return panelLeft + previewWidth() + (compactLayout ? 28 : 42);
+    }
+
+    private int controlsWidth() {
+        return Math.max(210, panelLeft + panelWidth - controlsX() - (compactLayout ? 14 : 24));
     }
 
     private void saveAndRefresh() {
@@ -360,31 +293,33 @@ public final class TierPlatesConfigScreen extends Screen {
         drawPanel(context, panelLeft, panelTop, panelWidth, panelHeight, SURFACE, BORDER);
         context.fill(panelLeft, panelTop, panelLeft + panelWidth, panelTop + 2, ACCENT);
 
-        int titleX = compactLayout ? panelLeft + 12 : panelLeft + 22;
+        int titleX = compactLayout ? panelLeft + 14 : panelLeft + 22;
         context.drawTextWithShadow(textRenderer, Text.literal("TierPlates").setStyle(Style.EMPTY.withColor(TEXT)), titleX, panelTop + 16, TEXT);
         context.drawTextWithShadow(textRenderer, Text.literal("1.0.0  made by OwYr7").setStyle(Style.EMPTY.withColor(WARM)), titleX, panelTop + 29, WARM);
 
-        int rightX = compactLayout ? panelLeft + 174 : panelLeft + 364;
-        context.drawTextWithShadow(textRenderer, Text.literal("Settings"), rightX, panelTop + 16, TEXT);
+        int rightX = controlsX();
+        context.drawTextWithShadow(textRenderer, Text.literal("Settings").setStyle(Style.EMPTY.withColor(TEXT)), rightX, panelTop + 16, TEXT);
         context.drawTextWithShadow(textRenderer, Text.literal("/tiersbyowyr7"), rightX, panelTop + 29, MUTED);
     }
 
     private void renderSettingsLabels(DrawContext context) {
-        if (compactLayout) {
-            return;
-        }
-        int x = panelLeft + 364;
-        drawSectionLabel(context, x, panelTop + 60, "General");
-        drawSectionLabel(context, x, panelTop + 188, "Display");
-        drawSectionLabel(context, x, panelTop + 304, "Preview");
+        int x = controlsX();
+        int y = panelTop + (compactLayout ? 92 : 106);
+        String subtitle = switch (activePage) {
+            case GENERAL -> "Visibility and preview";
+            case LAYOUT -> "Tier placement and nametag mode";
+            case COLORS -> "Click a tier to cycle its color";
+        };
+        context.drawTextWithShadow(textRenderer, Text.literal(activePage.title()).setStyle(Style.EMPTY.withColor(TEXT)), x, y - 12, TEXT);
+        context.drawTextWithShadow(textRenderer, Text.literal(subtitle).setStyle(Style.EMPTY.withColor(MUTED)), x, y, MUTED);
     }
 
     private void renderPreview(DrawContext context) {
         TierPlatesConfig config = TierPlatesClient.config();
-        int x = compactLayout ? panelLeft + 12 : panelLeft + 20;
-        int y = compactLayout ? panelTop + 54 : panelTop + 58;
-        int w = compactLayout ? 160 : 320;
-        int h = panelHeight - 86;
+        int x = compactLayout ? panelLeft + 14 : panelLeft + 20;
+        int y = compactLayout ? panelTop + 54 : panelTop + 62;
+        int w = previewWidth();
+        int h = panelTop + panelHeight - y - (compactLayout ? 28 : 32);
         drawPanel(context, x, y, w, h, SURFACE_2, BORDER);
 
         String previewName = previewName(config);
@@ -393,20 +328,16 @@ public final class TierPlatesConfigScreen extends Screen {
         context.drawTextWithShadow(textRenderer, Text.literal(previewName), x + 10, y + 22, MUTED);
 
         int centerX = x + w / 2;
-        int skinSize = compactLayout ? 48 : 74;
-        int skinY = compactLayout ? y + 80 : y + 86;
-        int nameplateY = compactLayout ? y + 42 : skinY - 34;
+        int skinSize = compactLayout ? 54 : 78;
+        int skinY = compactLayout ? y + 70 : y + 94;
+        int nameplateY = compactLayout ? y + 42 : skinY - 36;
         if (compactLayout) {
             drawCompactNameplatePreview(context, x, w, nameplateY, previewName, previewProfile, config);
         } else {
             drawNameplatePreview(context, centerX, nameplateY, previewName, previewProfile, config);
         }
         drawPlayerPreview(context, centerX - skinSize / 4, skinY, skinSize, previewName, config.previewOwnPlayer);
-        if (!compactLayout) {
-            drawIconRow(context, x + 16, y + h - 152);
-            drawPaletteTitle(context, x + 16, y + h - 132);
-            drawStatus(context, x + 16, y + h - 70, previewProfile);
-        }
+        drawStatus(context, x + 12, y + h - (compactLayout ? 42 : 54), previewProfile);
     }
 
     private void drawNameplatePreview(DrawContext context, int centerX, int y, String previewName,
@@ -642,9 +573,66 @@ public final class TierPlatesConfigScreen extends Screen {
         return EDIT_COLORS[0];
     }
 
+    private enum SettingsPage {
+        GENERAL("General"),
+        LAYOUT("Layout"),
+        COLORS("Colors");
+
+        private final String title;
+
+        SettingsPage(String title) {
+            this.title = title;
+        }
+
+        private String title() {
+            return title;
+        }
+    }
+
     @FunctionalInterface
     private interface ValueSupplier {
         String get();
+    }
+
+    private static final class PageTabButton extends ClickableWidget {
+        private final SettingsPage page;
+        private final boolean active;
+        private final Runnable action;
+
+        private PageTabButton(int x, int y, int width, int height, SettingsPage page, boolean active, Runnable action) {
+            super(x, y, width, height, Text.literal(page.title()));
+            this.page = page;
+            this.active = active;
+            this.action = action;
+            setTooltip(Tooltip.of(Text.literal(page.title())));
+        }
+
+        @Override
+        protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+            TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
+            int fill = active ? SURFACE_3 : (isHovered() ? SURFACE_2 : SURFACE);
+            int border = active ? BORDER_HOT : (isHovered() ? BORDER_HOT : BORDER);
+            context.fill(getX(), getY(), getRight(), getBottom(), fill);
+            context.fill(getX(), getY(), getRight(), getY() + 1, border);
+            context.fill(getX(), getBottom() - 1, getRight(), getBottom(), active ? ACCENT : border);
+            context.fill(getX(), getY(), getX() + 1, getBottom(), border);
+            context.fill(getRight() - 1, getY(), getRight(), getBottom(), border);
+            int color = active ? TEXT : MUTED;
+            int textX = getX() + (getWidth() - renderer.getWidth(page.title())) / 2;
+            context.drawTextWithShadow(renderer, Text.literal(page.title()), textX, getY() + (getHeight() - 8) / 2, color);
+        }
+
+        @Override
+        public void onClick(Click click, boolean doubleClick) {
+            if (!active) {
+                action.run();
+            }
+        }
+
+        @Override
+        protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+            appendDefaultNarrations(builder);
+        }
     }
 
     private static final class ModernOptionButton extends ClickableWidget {
@@ -672,7 +660,6 @@ public final class TierPlatesConfigScreen extends Screen {
             context.fill(getRight() - 1, getY(), getRight(), getBottom(), border);
 
             if (getHeight() < 28) {
-                context.drawTextWithShadow(renderer, Text.literal(label), getX() + 6, getY() + 7, MUTED);
                 String valueText = value.get();
                 int valueColor = switch (valueText) {
                     case "ON", "ME", "ME F5", "CACHE", "CLOSE" -> ACCENT;
@@ -680,7 +667,14 @@ public final class TierPlatesConfigScreen extends Screen {
                     default -> TEXT;
                 };
                 int valueX = getRight() - renderer.getWidth(valueText) - 6;
-                context.drawTextWithShadow(renderer, Text.literal(valueText), Math.max(getX() + 6, valueX), getY() + 7, valueColor);
+                int labelX = getX() + 6;
+                int labelEnd = labelX + renderer.getWidth(label);
+                if (valueX <= labelEnd + 5) {
+                    context.drawCenteredTextWithShadow(renderer, Text.literal(valueText), getX() + getWidth() / 2, getY() + 9, valueColor);
+                    return;
+                }
+                context.drawTextWithShadow(renderer, Text.literal(label), labelX, getY() + 9, MUTED);
+                context.drawTextWithShadow(renderer, Text.literal(valueText), Math.max(getX() + 6, valueX), getY() + 9, valueColor);
                 return;
             }
 
