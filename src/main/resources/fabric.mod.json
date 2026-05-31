@@ -11,6 +11,9 @@
   "entrypoints": {
     "client": [
       "dev.owyr.tierplates.client.TierPlatesClient"
+    ],
+    "modmenu": [
+      "dev.owyr.tierplates.client.compat.TierPlatesModMenu"
     ]
   },
   "mixins": [
@@ -22,5 +25,8 @@
     "fabric-api": "*",
     "fabric-command-api-v2": "*",
     "java": ">=21"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }
