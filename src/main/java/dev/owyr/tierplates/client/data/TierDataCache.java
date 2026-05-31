@@ -159,7 +159,7 @@ public final class TierDataCache {
                         return Optional.<String>empty();
                     }
                     return Optional.of(name.getAsString());
-                }).orElse("ItzRealMe"));
+                }).orElse("Swight"));
     }
 
     private static CompletableFuture<Optional<UUID>> uuidFuture(String name) {

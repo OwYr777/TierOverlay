@@ -47,11 +47,11 @@ public final class TierPlatesConfigScreen extends Screen {
     private static final int WARM = 0xFFECA461;
     private static final int GREEN = 0xFF8DFFB0;
     private static final int PIPE = 0xFFDADADA;
-    private static final String DEFAULT_PREVIEW_PLAYER = "ItzRealMe";
-    private static final UUID DEFAULT_PREVIEW_UUID = UUID.fromString("06ec3577-3299-45fa-bbdf-613b1f86c8ab");
-    private static final Identifier DEFAULT_PREVIEW_SKIN = Identifier.of("tierplates", "textures/gui/itzrealme_skin.png");
+    private static final String DEFAULT_PREVIEW_PLAYER = "Swight";
+    private static final UUID DEFAULT_PREVIEW_UUID = UUID.fromString("ebd7af32-759e-41e2-b227-9eeb8576d609");
+    private static final Identifier DEFAULT_PREVIEW_SKIN = Identifier.of("tierplates", "textures/gui/swight_skin.png");
     private static final SkinTextures DEFAULT_PREVIEW_SKIN_TEXTURES = new SkinTextures(
-            new LocalTextureAsset(Identifier.of("tierplates", "itzrealme_preview_skin"), DEFAULT_PREVIEW_SKIN),
+            new LocalTextureAsset(Identifier.of("tierplates", "swight_preview_skin"), DEFAULT_PREVIEW_SKIN),
             null,
             null,
             PlayerSkinType.WIDE,

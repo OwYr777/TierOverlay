@@ -83,8 +83,9 @@ public final class ConfigManager {
         if (!object.has("showNameInNametag")) {
             config.showNameInNametag = true;
         }
-        if (config.previewPlayerName == null) {
-            config.previewPlayerName = "";
+        if (config.previewPlayerName == null || config.previewPlayerName.isBlank()
+                || config.previewPlayerName.equalsIgnoreCase("ItzRealMe")) {
+            config.previewPlayerName = "Swight";
         }
     }
 }
