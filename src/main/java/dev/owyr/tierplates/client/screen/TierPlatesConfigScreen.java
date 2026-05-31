@@ -19,11 +19,13 @@ import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.entity.player.PlayerSkinType;
 import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.StyleSpriteSource;
 import net.minecraft.text.Text;
+import net.minecraft.util.AssetInfo.TextureAsset;
 import net.minecraft.util.Identifier;
 
 import java.util.Map;
@@ -47,6 +49,14 @@ public final class TierPlatesConfigScreen extends Screen {
     private static final int PIPE = 0xFFDADADA;
     private static final String DEFAULT_PREVIEW_PLAYER = "ItzRealMe";
     private static final UUID DEFAULT_PREVIEW_UUID = UUID.fromString("06ec3577-3299-45fa-bbdf-613b1f86c8ab");
+    private static final Identifier DEFAULT_PREVIEW_SKIN = Identifier.of("tierplates", "textures/gui/itzrealme_skin.png");
+    private static final SkinTextures DEFAULT_PREVIEW_SKIN_TEXTURES = new SkinTextures(
+            new LocalTextureAsset(Identifier.of("tierplates", "itzrealme_preview_skin"), DEFAULT_PREVIEW_SKIN),
+            null,
+            null,
+            PlayerSkinType.WIDE,
+            true
+    );
     private static final String[] TIER_ORDER = {"HT1", "LT1", "HT2", "LT2", "HT3", "LT3", "HT4", "LT4", "HT5", "LT5"};
     private static final int[] EDIT_COLORS = {
             0xE1BB4A, 0xD0B45E, 0xC7D3E6, 0xA1A7B1, 0xECA461,
@@ -297,14 +307,17 @@ public final class TierPlatesConfigScreen extends Screen {
     }
 
     private void addColorEditors() {
-        int startX = compactLayout ? panelLeft + 28 : panelLeft + 38;
-        int startY = compactLayout ? panelTop + 182 : panelTop + panelHeight - 116;
+        int previewX = panelLeft + 12;
+        int previewW = 160;
+        int compactTotalWidth = 10 * 10 + 9 * 4;
+        int startX = compactLayout ? previewX + (previewW - compactTotalWidth) / 2 : panelLeft + 38;
+        int startY = compactLayout ? panelTop + panelHeight - 52 : panelTop + panelHeight - 116;
         int size = compactLayout ? 14 : 22;
-        int gap = compactLayout ? 9 : 7;
+        int gap = compactLayout ? 4 : 7;
         for (int i = 0; i < TIER_ORDER.length; i++) {
-            int x = compactLayout ? startX + (i % 5) * (size + gap) : startX + i * (size + gap);
-            int y = compactLayout ? startY + (i / 5) * 28 : startY;
-            addDrawableChild(new ColorSwatchWidget(x, y, size, compactLayout ? 24 : 32, TIER_ORDER[i]));
+            int x = compactLayout ? startX + i * (10 + gap) : startX + i * (size + gap);
+            int y = compactLayout ? startY : startY;
+            addDrawableChild(new ColorSwatchWidget(x, y, compactLayout ? 10 : size, compactLayout ? 10 : 32, TIER_ORDER[i]));
         }
     }
 
@@ -381,9 +394,13 @@ public final class TierPlatesConfigScreen extends Screen {
 
         int centerX = x + w / 2;
         int skinSize = compactLayout ? 48 : 74;
-        int skinY = compactLayout ? y + 68 : y + 86;
+        int skinY = compactLayout ? y + 80 : y + 86;
         int nameplateY = compactLayout ? y + 42 : skinY - 34;
-        drawNameplatePreview(context, centerX, nameplateY, previewName, previewProfile, config);
+        if (compactLayout) {
+            drawCompactNameplatePreview(context, x, w, nameplateY, previewName, previewProfile, config);
+        } else {
+            drawNameplatePreview(context, centerX, nameplateY, previewName, previewProfile, config);
+        }
         drawPlayerPreview(context, centerX - skinSize / 4, skinY, skinSize, previewName, config.previewOwnPlayer);
         if (!compactLayout) {
             drawIconRow(context, x + 16, y + h - 152);
@@ -423,6 +440,27 @@ public final class TierPlatesConfigScreen extends Screen {
         context.drawTextWithShadow(textRenderer, name, nameX, y, TEXT);
         context.drawTextWithShadow(textRenderer, Text.literal("|"), rightPipeX, y, PIPE);
         rightEntry.ifPresent(entry -> context.drawTextWithShadow(textRenderer, TierTextFormatter.badge(entry, config.showIcons), rightPipeX + 11, y, TEXT));
+    }
+
+    private void drawCompactNameplatePreview(DrawContext context, int x, int width, int y, String previewName,
+                                             Optional<PlayerTierProfile> previewProfile, TierPlatesConfig config) {
+        int centerX = x + width / 2;
+        Optional<TierEntry> leftEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.LEFT), config.displayMode));
+        Optional<TierEntry> rightEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.RIGHT), config.displayMode));
+        Optional<String> sub = previewProfile.flatMap(PlayerTierProfile::subtier);
+
+        if (previewProfile.isEmpty()) {
+            context.drawCenteredTextWithShadow(textRenderer, Text.literal("Loading tiers..."), centerX, y - 10, MUTED);
+        }
+        sub.ifPresent(value -> context.drawCenteredTextWithShadow(textRenderer, Text.literal(value).setStyle(Style.EMPTY.withColor(WARM)), centerX, y - 10, WARM));
+
+        Text name = Text.literal(previewName);
+        context.drawCenteredTextWithShadow(textRenderer, name, centerX, y + 2, TEXT);
+        leftEntry.ifPresent(entry -> context.drawTextWithShadow(textRenderer, TierTextFormatter.badge(entry, config.showIcons), x + 14, y + 15, TEXT));
+        rightEntry.ifPresent(entry -> {
+            Text badge = TierTextFormatter.badge(entry, config.showIcons);
+            context.drawTextWithShadow(textRenderer, badge, x + width - 14 - textRenderer.getWidth(badge), y + 15, TEXT);
+        });
     }
 
     private void drawPlayerPreview(DrawContext context, int x, int y, int height, String name, boolean ownPlayer) {
@@ -553,6 +591,9 @@ public final class TierPlatesConfigScreen extends Screen {
         }
 
         String previewName = name == null || name.isBlank() ? DEFAULT_PREVIEW_PLAYER : name;
+        if (DEFAULT_PREVIEW_PLAYER.equalsIgnoreCase(previewName)) {
+            return Optional.of(DEFAULT_PREVIEW_SKIN_TEXTURES);
+        }
         Optional<UUID> resolvedUuid = DEFAULT_PREVIEW_PLAYER.equalsIgnoreCase(previewName)
                 ? Optional.of(DEFAULT_PREVIEW_UUID)
                 : TierDataCache.uuidForName(previewName);
@@ -683,11 +724,15 @@ public final class TierPlatesConfigScreen extends Screen {
             TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
             int color = tierColor(tier);
             int border = isHovered() ? BORDER_HOT : BORDER;
-            context.fill(getX(), getY(), getRight(), getY() + 18, 0xFF000000 | color);
+            int swatchHeight = Math.min(18, getHeight());
+            context.fill(getX(), getY(), getRight(), getY() + swatchHeight, 0xFF000000 | color);
             context.fill(getX(), getY(), getRight(), getY() + 1, border);
-            context.fill(getX(), getY() + 17, getRight(), getY() + 18, border);
-            context.fill(getX(), getY(), getX() + 1, getY() + 18, border);
-            context.fill(getRight() - 1, getY(), getRight(), getY() + 18, border);
+            context.fill(getX(), getY() + swatchHeight - 1, getRight(), getY() + swatchHeight, border);
+            context.fill(getX(), getY(), getX() + 1, getY() + swatchHeight, border);
+            context.fill(getRight() - 1, getY(), getRight(), getY() + swatchHeight, border);
+            if (getHeight() <= 16) {
+                return;
+            }
             int labelX = getX() + (getWidth() - renderer.getWidth(tier)) / 2;
             context.drawTextWithShadow(renderer, Text.literal(tier), labelX, getY() + 22, TEXT);
         }
@@ -706,5 +751,8 @@ public final class TierPlatesConfigScreen extends Screen {
         protected void appendClickableNarrations(NarrationMessageBuilder builder) {
             appendDefaultNarrations(builder);
         }
+    }
+
+    private record LocalTextureAsset(Identifier id, Identifier texturePath) implements TextureAsset {
     }
 }

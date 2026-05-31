@@ -16,6 +16,10 @@ public abstract class ChatHudMixin {
             ordinal = 0
     )
     private Text tierplates$decorateChatMessage(Text message) {
-        return TierTextFormatter.decorateChatMessage(message);
+        try {
+            return TierTextFormatter.decorateChatMessage(message);
+        } catch (Throwable ignored) {
+            return message;
+        }
     }
 }

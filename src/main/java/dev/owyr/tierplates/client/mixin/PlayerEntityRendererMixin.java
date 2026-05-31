@@ -18,8 +18,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerEntityRendererMixin {
     @Inject(method = "updateRenderState(Lnet/minecraft/entity/Entity;Lnet/minecraft/client/render/entity/state/EntityRenderState;F)V", at = @At("TAIL"))
     private void tierplates$forceOwnName(Entity entity, EntityRenderState state, float tickDelta, CallbackInfo ci) {
-        if (entity instanceof PlayerEntity player && state instanceof PlayerEntityRenderState playerState) {
-            TierNameplateRenderer.decorateState(player, playerState);
+        try {
+            if (entity instanceof PlayerEntity player && state instanceof PlayerEntityRenderState playerState) {
+                TierNameplateRenderer.decorateState(player, playerState);
+            }
+        } catch (Throwable ignored) {
+            // Rendering must never fail because of the overlay.
         }
     }
 
@@ -29,6 +33,10 @@ public abstract class PlayerEntityRendererMixin {
     )
     private void tierplates$enforceNameLines(PlayerEntityRenderState state, MatrixStack matrices, OrderedRenderCommandQueue queue,
                                              CameraRenderState camera, CallbackInfo ci) {
-        TierNameplateRenderer.enforceBeforeRender(state);
+        try {
+            TierNameplateRenderer.enforceBeforeRender(state);
+        } catch (Throwable ignored) {
+            // Keep the vanilla render path if a client/server combination behaves unexpectedly.
+        }
     }
 }

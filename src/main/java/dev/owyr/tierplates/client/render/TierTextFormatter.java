@@ -72,6 +72,9 @@ public final class TierTextFormatter {
         List<Replacement> replacements = new ArrayList<>();
         for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
             String name = entry.getProfile().name();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
             Text decoratedName = decorateInlineName(entry.getProfile().id(), name, Text.literal(name));
             if (!decoratedName.getString().equals(name)) {
                 collectNameReplacements(plain, name, entry.getProfile().id(), replacements);
