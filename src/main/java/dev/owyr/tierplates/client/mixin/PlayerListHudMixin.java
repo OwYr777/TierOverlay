@@ -18,7 +18,11 @@ public abstract class PlayerListHudMixin {
             if (profileName == null || profileName.isBlank()) {
                 return;
             }
-            cir.setReturnValue(TierTextFormatter.decorateFlatName(entry.getProfile().id(), profileName, cir.getReturnValue()));
+            Text vanillaName = cir.getReturnValue();
+            if (vanillaName == null) {
+                return;
+            }
+            cir.setReturnValue(TierTextFormatter.decorateFlatName(entry.getProfile().id(), profileName, vanillaName));
         } catch (Throwable ignored) {
             // Keep vanilla/custom tab text if a server sends an unexpected player entry.
         }
