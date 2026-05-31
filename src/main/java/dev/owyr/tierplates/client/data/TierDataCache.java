@@ -304,6 +304,10 @@ public final class TierDataCache {
         if (element == null) {
             return Optional.empty();
         }
+        return parseTierElement(element, mode);
+    }
+
+    private static Optional<TierEntry> parseTierElement(JsonElement element, GameMode mode) {
         if (element.isJsonPrimitive()) {
             return tierLiteral(element.getAsString(), mode);
         }
@@ -373,7 +377,7 @@ public final class TierDataCache {
 
             JsonElement rankings = object.get("rankings");
             if (rankings != null && rankings.isJsonObject() && !rankings.getAsJsonObject().isEmpty()) {
-                profile.subtier("S");
+                bestSubtierRanking(rankings.getAsJsonObject()).ifPresent(entry -> profile.subtier(entry.tier()));
                 return;
             }
 
@@ -381,6 +385,13 @@ public final class TierDataCache {
             parseTierSource(Optional.of(object), subtierProfile, TierSource.MCTIERS);
             subtierProfile.best(TierSource.MCTIERS).ifPresent(entry -> profile.subtier(entry.tier()));
         });
+    }
+
+    private static Optional<TierEntry> bestSubtierRanking(JsonObject rankings) {
+        return rankings.entrySet().stream()
+                .map(entry -> parseTierElement(entry.getValue(), GameMode.SWORD))
+                .flatMap(Optional::stream)
+                .max((left, right) -> Integer.compare(left.score(), right.score()));
     }
 
     private static PlayerTierProfile demoProfile(String name) {
@@ -391,7 +402,7 @@ public final class TierDataCache {
         profile.put(TierSource.PVPTIERS, GameMode.SWORD, new TierEntry(shift % 3 == 0 ? "HT4" : "LT3", GameMode.SWORD));
         profile.put(TierSource.PVPTIERS, GameMode.CRYSTAL, new TierEntry("HT3", GameMode.CRYSTAL));
         if (shift != 0) {
-            profile.subtier("S");
+            profile.subtier("LT3");
         }
         return profile;
     }

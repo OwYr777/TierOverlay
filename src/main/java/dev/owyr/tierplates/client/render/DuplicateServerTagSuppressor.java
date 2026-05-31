@@ -24,6 +24,9 @@ public final class DuplicateServerTagSuppressor {
         }
 
         String plainLabel = label.getString();
+        if (looksLikeHealthIndicator(plainLabel)) {
+            return false;
+        }
         if (!looksLikeNameTagLine(plainLabel)) {
             return false;
         }
@@ -100,6 +103,23 @@ public final class DuplicateServerTagSuppressor {
                 && !trimmed.contains(":")
                 && !trimmed.contains("/")
                 && !trimmed.contains("\\");
+    }
+
+    private static boolean looksLikeHealthIndicator(String label) {
+        String trimmed = label == null ? "" : label.trim().toLowerCase(Locale.ROOT);
+        if (trimmed.isBlank()) {
+            return false;
+        }
+
+        return trimmed.contains("❤")
+                || trimmed.contains("♥")
+                || trimmed.contains("hp")
+                || trimmed.contains("health")
+                || trimmed.contains("leben")
+                || trimmed.contains("life")
+                || trimmed.matches("[0-9]{1,3}(\\.[0-9])?")
+                || trimmed.matches("[0-9]{1,3}(\\.[0-9])?\\s*/\\s*[0-9]{1,3}(\\.[0-9])?")
+                || trimmed.matches("[0-9]{1,3}(\\.[0-9])?\\s*(❤|♥|hp)");
     }
 
     private static String normalize(String value) {

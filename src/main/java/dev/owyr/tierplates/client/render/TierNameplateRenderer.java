@@ -22,7 +22,7 @@ public final class TierNameplateRenderer {
     private static final int WHITE = 0xFFFFFF;
     private static final int PIPE = 0xDADADA;
     private static final long RECENT_NAMEPLATE_MS = 900L;
-    private static final Map<PlayerEntityRenderState, Optional<Text>> UPPER_LINES = new WeakHashMap<>();
+    private static final Map<PlayerEntityRenderState, Optional<Text>> LOWER_LINES = new WeakHashMap<>();
     private static final Map<UUID, Long> RECENT_NAMEPLATES = new ConcurrentHashMap<>();
 
     private TierNameplateRenderer() {
@@ -63,18 +63,26 @@ public final class TierNameplateRenderer {
         }
 
         DecoratedName decoratedName = optionalDecoratedName.get();
-        state.displayName = decoratedName.lower();
-        state.playerName = decoratedName.upper().orElse(null);
-        synchronized (UPPER_LINES) {
-            UPPER_LINES.put(state, decoratedName.upper());
+        if (decoratedName.upper().isPresent()) {
+            state.displayName = decoratedName.upper().get();
+            state.playerName = decoratedName.lower();
+            synchronized (LOWER_LINES) {
+                LOWER_LINES.put(state, Optional.of(decoratedName.lower()));
+            }
+        } else {
+            state.displayName = decoratedName.lower();
+            state.playerName = null;
+            synchronized (LOWER_LINES) {
+                LOWER_LINES.put(state, Optional.empty());
+            }
         }
         RECENT_NAMEPLATES.put(player.getUuid(), System.currentTimeMillis());
     }
 
     public static void enforceBeforeRender(PlayerEntityRenderState state) {
-        synchronized (UPPER_LINES) {
-            if (UPPER_LINES.containsKey(state)) {
-                state.playerName = UPPER_LINES.get(state).orElse(null);
+        synchronized (LOWER_LINES) {
+            if (LOWER_LINES.containsKey(state)) {
+                state.playerName = LOWER_LINES.get(state).orElse(null);
             }
         }
     }
@@ -128,13 +136,13 @@ public final class TierNameplateRenderer {
         Text lower = left.isPresent() || right.isPresent()
                 ? nameLine(vanillaName, left, right, config.showIcons, drawName)
                 : vanillaName;
-        Optional<Text> upper = subtier.map(value -> subtierLine(vanillaName, value));
+        Optional<Text> upper = subtier.map(value -> subtierLine(vanillaName, value, left, right, config.showIcons));
         return Optional.of(new DecoratedName(upper, lower));
     }
 
     private static void forget(PlayerEntity player, PlayerEntityRenderState state) {
-        synchronized (UPPER_LINES) {
-            UPPER_LINES.remove(state);
+        synchronized (LOWER_LINES) {
+            LOWER_LINES.remove(state);
         }
         RECENT_NAMEPLATES.remove(player.getUuid());
     }
@@ -171,18 +179,41 @@ public final class TierNameplateRenderer {
         return line;
     }
 
-    private static Text subtierLine(Text name, String subtier) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        int nameWidth = client.textRenderer == null ? name.getString().length() * 6 : client.textRenderer.getWidth(name);
-        int subtierWidth = client.textRenderer == null ? subtier.length() * 6 : client.textRenderer.getWidth(subtier);
+    private static Text subtierLine(Text name, String subtier, Optional<TierEntry> left, Optional<TierEntry> right, boolean showIcon) {
+        int nameWidth = textWidth(name);
+        int subtierWidth = textWidth(subtier);
         int paddingWidth = Math.max(8, (nameWidth - subtierWidth) / 2 + 5);
-        int padding = Math.max(1, paddingWidth / 4);
-        String spaces = " ".repeat(padding);
-        return Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE))
+        String sidePadLeft = spacesForWidth(left.map(entry -> textWidth(badge(entry, showIcon)) + 8).orElse(0));
+        String sidePadRight = spacesForWidth(right.map(entry -> textWidth(badge(entry, showIcon)) + 8).orElse(0));
+        String spaces = spacesForWidth(paddingWidth);
+        return Text.literal(sidePadLeft)
+                .append(Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE)))
                 .append(Text.literal(spaces))
-                .append(Text.literal(subtier).setStyle(Style.EMPTY.withColor(0xFFE08A)))
+                .append(Text.literal(subtier).setStyle(Style.EMPTY.withColor(subtierColor(subtier))))
                 .append(Text.literal(spaces))
-                .append(Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE)));
+                .append(Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE)))
+                .append(Text.literal(sidePadRight));
+    }
+
+    private static int subtierColor(String subtier) {
+        return subtier.matches("R?(HT|LT)[1-5]") ? TierTextFormatter.tierColor(subtier) : 0xFFE08A;
+    }
+
+    private static int textWidth(Text text) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        return client.textRenderer == null ? text.getString().length() * 6 : client.textRenderer.getWidth(text);
+    }
+
+    private static int textWidth(String text) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        return client.textRenderer == null ? text.length() * 6 : client.textRenderer.getWidth(text);
+    }
+
+    private static String spacesForWidth(int width) {
+        if (width <= 0) {
+            return "";
+        }
+        return " ".repeat(Math.max(1, Math.round(width / 4.0F)));
     }
 
     private record DecoratedName(Optional<Text> upper, Text lower) {
