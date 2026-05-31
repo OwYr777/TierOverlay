@@ -377,7 +377,7 @@ public final class TierDataCache {
 
             JsonElement rankings = object.get("rankings");
             if (rankings != null && rankings.isJsonObject() && !rankings.getAsJsonObject().isEmpty()) {
-                bestSubtierRanking(rankings.getAsJsonObject()).ifPresent(entry -> profile.subtier(entry.tier()));
+                bestSubtierRanking(rankings.getAsJsonObject()).ifPresent(profile::subtier);
                 return;
             }
 
@@ -387,11 +387,16 @@ public final class TierDataCache {
         });
     }
 
-    private static Optional<TierEntry> bestSubtierRanking(JsonObject rankings) {
+    private static Optional<SubtierEntry> bestSubtierRanking(JsonObject rankings) {
         return rankings.entrySet().stream()
-                .map(entry -> parseTierElement(entry.getValue(), GameMode.SWORD))
-                .flatMap(Optional::stream)
+                .flatMap(entry -> parseSubtierEntry(entry.getKey(), entry.getValue()).stream())
                 .max((left, right) -> Integer.compare(left.score(), right.score()));
+    }
+
+    private static Optional<SubtierEntry> parseSubtierEntry(String modeKey, JsonElement element) {
+        SubtierMode mode = SubtierMode.fromKey(modeKey).orElse(SubtierMode.OVERALL);
+        return parseTierElement(element, GameMode.SWORD)
+                .map(entry -> new SubtierEntry(entry.tier(), mode));
     }
 
     private static PlayerTierProfile demoProfile(String name) {
@@ -402,7 +407,7 @@ public final class TierDataCache {
         profile.put(TierSource.PVPTIERS, GameMode.SWORD, new TierEntry(shift % 3 == 0 ? "HT4" : "LT3", GameMode.SWORD));
         profile.put(TierSource.PVPTIERS, GameMode.CRYSTAL, new TierEntry("HT3", GameMode.CRYSTAL));
         if (shift != 0) {
-            profile.subtier("LT3");
+            profile.subtier(new SubtierEntry("LT3", SubtierMode.MINECART));
         }
         return profile;
     }

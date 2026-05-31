@@ -55,6 +55,104 @@
       "ascent": 7,
       "height": 7,
       "chars": ["\uF007"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/overall.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF100"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/bed.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF101"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/bow.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF102"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/creeper.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF103"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/debuff.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF104"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/dia_crystal.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF105"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/dia_smp.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF106"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/elytra.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF107"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/mace.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF108"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/manhunt.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF109"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/minecart.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF10A"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/og_vanilla.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF10B"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/speed.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF10C"]
+    },
+    {
+      "type": "bitmap",
+      "file": "tierplates:font/gamemodes/subtiers/trident.png",
+      "ascent": 7,
+      "height": 7,
+      "chars": ["\uF10D"]
     }
   ]
 }

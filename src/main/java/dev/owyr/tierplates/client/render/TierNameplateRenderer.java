@@ -3,6 +3,7 @@ package dev.owyr.tierplates.client.render;
 import dev.owyr.tierplates.client.TierPlatesClient;
 import dev.owyr.tierplates.client.config.TierPlatesConfig;
 import dev.owyr.tierplates.client.data.PlayerTierProfile;
+import dev.owyr.tierplates.client.data.SubtierEntry;
 import dev.owyr.tierplates.client.data.TierEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
@@ -10,6 +11,7 @@ import net.minecraft.entity.EntityAttachmentType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
+import net.minecraft.text.StyleSpriteSource;
 import net.minecraft.text.Text;
 
 import java.util.Map;
@@ -22,6 +24,7 @@ public final class TierNameplateRenderer {
     private static final int WHITE = 0xFFFFFF;
     private static final int PIPE = 0xDADADA;
     private static final long RECENT_NAMEPLATE_MS = 900L;
+    private static final double NAMEPLATE_Y_OFFSET = 0.32D;
     private static final Map<PlayerEntityRenderState, Optional<Text>> LOWER_LINES = new WeakHashMap<>();
     private static final Map<UUID, Long> RECENT_NAMEPLATES = new ConcurrentHashMap<>();
 
@@ -57,9 +60,10 @@ public final class TierNameplateRenderer {
             return;
         }
 
-        if (state.nameLabelPos == null) {
-            state.nameLabelPos = player.getAttachments()
-                    .getPointNullable(EntityAttachmentType.NAME_TAG, 0, player.getLerpedYaw(client.getRenderTickCounter().getTickProgress(false)));
+        state.nameLabelPos = player.getAttachments()
+                .getPointNullable(EntityAttachmentType.NAME_TAG, 0, player.getLerpedYaw(client.getRenderTickCounter().getTickProgress(false)));
+        if (state.nameLabelPos != null) {
+            state.nameLabelPos = state.nameLabelPos.add(0.0D, NAMEPLATE_Y_OFFSET, 0.0D);
         }
 
         DecoratedName decoratedName = optionalDecoratedName.get();
@@ -126,7 +130,7 @@ public final class TierNameplateRenderer {
         PlayerTierProfile profile = optionalProfile.get();
         Optional<TierEntry> left = TierTextFormatter.entryFor(profile, TierTextFormatter.sourceFor(config, TierPlatesConfig.Side.LEFT), config.displayMode);
         Optional<TierEntry> right = TierTextFormatter.entryFor(profile, TierTextFormatter.sourceFor(config, TierPlatesConfig.Side.RIGHT), config.displayMode);
-        Optional<String> subtier = profile.subtier();
+        Optional<SubtierEntry> subtier = profile.subtierEntry();
 
         if (left.isEmpty() && right.isEmpty() && subtier.isEmpty()) {
             return Optional.empty();
@@ -179,9 +183,10 @@ public final class TierNameplateRenderer {
         return line;
     }
 
-    private static Text subtierLine(Text name, String subtier, Optional<TierEntry> left, Optional<TierEntry> right, boolean showIcon) {
+    private static Text subtierLine(Text name, SubtierEntry subtier, Optional<TierEntry> left, Optional<TierEntry> right, boolean showIcon) {
         int nameWidth = textWidth(name);
-        int subtierWidth = textWidth(subtier);
+        Text subtierBadge = subtierBadge(subtier, showIcon);
+        int subtierWidth = textWidth(subtierBadge);
         int paddingWidth = Math.max(8, (nameWidth - subtierWidth) / 2 + 5);
         String sidePadLeft = spacesForWidth(left.map(entry -> textWidth(badge(entry, showIcon)) + 8).orElse(0));
         String sidePadRight = spacesForWidth(right.map(entry -> textWidth(badge(entry, showIcon)) + 8).orElse(0));
@@ -189,14 +194,23 @@ public final class TierNameplateRenderer {
         return Text.literal(sidePadLeft)
                 .append(Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE)))
                 .append(Text.literal(spaces))
-                .append(Text.literal(subtier).setStyle(Style.EMPTY.withColor(subtierColor(subtier))))
+                .append(subtierBadge)
                 .append(Text.literal(spaces))
                 .append(Text.literal("|").setStyle(Style.EMPTY.withColor(PIPE)))
                 .append(Text.literal(sidePadRight));
     }
 
-    private static int subtierColor(String subtier) {
-        return subtier.matches("R?(HT|LT)[1-5]") ? TierTextFormatter.tierColor(subtier) : 0xFFE08A;
+    private static Text subtierBadge(SubtierEntry subtier, boolean showIcon) {
+        MutableText text = Text.literal(subtier.tier() + " ").setStyle(Style.EMPTY.withColor(subtierColor(subtier.tier())));
+        if (showIcon) {
+            text.append(Text.literal(subtier.mode().icon)
+                    .setStyle(Style.EMPTY.withFont(new StyleSpriteSource.Font(TierTextFormatter.iconFont(TierPlatesClient.config()))).withColor(0xFFFFFF)));
+        }
+        return text;
+    }
+
+    private static int subtierColor(String tier) {
+        return tier.matches("R?(HT|LT)[1-5]") ? TierTextFormatter.tierColor(tier) : 0xFFE08A;
     }
 
     private static int textWidth(Text text) {

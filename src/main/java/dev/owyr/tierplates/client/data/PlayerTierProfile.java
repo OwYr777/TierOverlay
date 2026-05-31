@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public final class PlayerTierProfile {
     private final Map<TierSource, Map<GameMode, TierEntry>> entries = new EnumMap<>(TierSource.class);
-    private String subtier;
+    private SubtierEntry subtier;
 
     public void put(TierSource source, GameMode mode, TierEntry entry) {
         entries.computeIfAbsent(source, ignored -> new EnumMap<>(GameMode.class)).put(mode, entry);
@@ -31,10 +31,18 @@ public final class PlayerTierProfile {
     }
 
     public Optional<String> subtier() {
-        return Optional.ofNullable(subtier).filter(value -> !value.isBlank());
+        return subtierEntry().map(SubtierEntry::tier);
+    }
+
+    public Optional<SubtierEntry> subtierEntry() {
+        return Optional.ofNullable(subtier).filter(value -> !value.tier().isBlank());
     }
 
     public void subtier(String subtier) {
+        this.subtier = new SubtierEntry(subtier, SubtierMode.OVERALL);
+    }
+
+    public void subtier(SubtierEntry subtier) {
         this.subtier = subtier;
     }
 }

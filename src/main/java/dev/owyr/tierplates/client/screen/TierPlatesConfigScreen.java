@@ -4,6 +4,7 @@ import dev.owyr.tierplates.client.TierPlatesClient;
 import dev.owyr.tierplates.client.config.TierPlatesConfig;
 import dev.owyr.tierplates.client.data.GameMode;
 import dev.owyr.tierplates.client.data.PlayerTierProfile;
+import dev.owyr.tierplates.client.data.SubtierEntry;
 import dev.owyr.tierplates.client.data.TierDataCache;
 import dev.owyr.tierplates.client.data.TierEntry;
 import dev.owyr.tierplates.client.data.TierSource;
@@ -356,17 +357,17 @@ public final class TierPlatesConfigScreen extends Screen {
 
         Optional<TierEntry> leftEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.LEFT), config.displayMode));
         Optional<TierEntry> rightEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.RIGHT), config.displayMode));
-        Optional<String> sub = previewProfile.flatMap(PlayerTierProfile::subtier);
+        Optional<SubtierEntry> sub = previewProfile.flatMap(PlayerTierProfile::subtierEntry);
 
         if (previewProfile.isEmpty()) {
             context.drawCenteredTextWithShadow(textRenderer, Text.literal("Loading tiers..."), centerX, y - 14, MUTED);
         }
 
         sub.ifPresent(value -> {
-            Text subText = Text.literal(value).setStyle(Style.EMPTY.withColor(WARM));
+            Text subText = subtierPreviewBadge(value, config.showIcons);
             context.drawTextWithShadow(textRenderer, Text.literal("|"), leftPipeX, y - 12, PIPE);
             context.drawTextWithShadow(textRenderer, Text.literal("|"), rightPipeX, y - 12, PIPE);
-            context.drawTextWithShadow(textRenderer, subText, centerX - textRenderer.getWidth(subText) / 2, y - 12, WARM);
+            context.drawTextWithShadow(textRenderer, subText, centerX - textRenderer.getWidth(subText) / 2, y - 12, TEXT);
         });
 
         leftEntry.ifPresent(entry -> {
@@ -384,12 +385,12 @@ public final class TierPlatesConfigScreen extends Screen {
         int centerX = x + width / 2;
         Optional<TierEntry> leftEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.LEFT), config.displayMode));
         Optional<TierEntry> rightEntry = previewProfile.flatMap(profile -> entryFor(profile, sourceFor(config, TierPlatesConfig.Side.RIGHT), config.displayMode));
-        Optional<String> sub = previewProfile.flatMap(PlayerTierProfile::subtier);
+        Optional<SubtierEntry> sub = previewProfile.flatMap(PlayerTierProfile::subtierEntry);
 
         if (previewProfile.isEmpty()) {
             context.drawCenteredTextWithShadow(textRenderer, Text.literal("Loading tiers..."), centerX, y - 10, MUTED);
         }
-        sub.ifPresent(value -> context.drawCenteredTextWithShadow(textRenderer, Text.literal(value).setStyle(Style.EMPTY.withColor(WARM)), centerX, y - 10, WARM));
+        sub.ifPresent(value -> context.drawCenteredTextWithShadow(textRenderer, subtierPreviewBadge(value, config.showIcons), centerX, y - 10, TEXT));
 
         Text name = Text.literal(previewName);
         context.drawCenteredTextWithShadow(textRenderer, name, centerX, y + 2, TEXT);
@@ -398,6 +399,15 @@ public final class TierPlatesConfigScreen extends Screen {
             Text badge = TierTextFormatter.badge(entry, config.showIcons);
             context.drawTextWithShadow(textRenderer, badge, x + width - 14 - textRenderer.getWidth(badge), y + 15, TEXT);
         });
+    }
+
+    private Text subtierPreviewBadge(SubtierEntry entry, boolean showIcon) {
+        MutableText text = Text.literal(entry.tier() + " ").setStyle(Style.EMPTY.withColor(TierTextFormatter.tierColor(entry.tier())));
+        if (showIcon) {
+            text.append(Text.literal(entry.mode().icon)
+                    .setStyle(Style.EMPTY.withFont(new StyleSpriteSource.Font(TierTextFormatter.iconFont(TierPlatesClient.config()))).withColor(0xFFFFFF)));
+        }
+        return text;
     }
 
     private void drawPlayerPreview(DrawContext context, int x, int y, int height, String name, boolean ownPlayer) {
