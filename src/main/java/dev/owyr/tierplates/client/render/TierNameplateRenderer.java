@@ -3,7 +3,6 @@ package dev.owyr.tierplates.client.render;
 import dev.owyr.tierplates.client.TierPlatesClient;
 import dev.owyr.tierplates.client.config.TierPlatesConfig;
 import dev.owyr.tierplates.client.data.PlayerTierProfile;
-import dev.owyr.tierplates.client.data.TierDataCache;
 import dev.owyr.tierplates.client.data.TierEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
@@ -111,7 +110,7 @@ public final class TierNameplateRenderer {
             return Optional.empty();
         }
 
-        Optional<PlayerTierProfile> optionalProfile = TierDataCache.getBestEffort(player.getUuid(), player.getNameForScoreboard(), false);
+        Optional<PlayerTierProfile> optionalProfile = TierTextFormatter.profileFor(player.getUuid(), player.getNameForScoreboard(), vanillaName);
         if (optionalProfile.isEmpty()) {
             return Optional.empty();
         }

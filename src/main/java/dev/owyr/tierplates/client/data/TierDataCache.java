@@ -16,8 +16,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 public final class TierDataCache {
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("[A-Za-z0-9_]{3,16}");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))
             .build();
@@ -40,6 +42,9 @@ public final class TierDataCache {
         if (demoData) {
             return Optional.of(demoProfile(name));
         }
+        if (uuid == null) {
+            return Optional.empty();
+        }
 
         CompletableFuture<PlayerTierProfile> future = CACHE.computeIfAbsent(uuid, ignored -> fetch(uuid));
         if (!future.isDone() || future.isCompletedExceptionally()) {
@@ -52,6 +57,9 @@ public final class TierDataCache {
         if (demoData) {
             return Optional.of(demoProfile(name));
         }
+        if (!isMinecraftName(name)) {
+            return Optional.empty();
+        }
 
         String cacheKey = name.toLowerCase(Locale.ROOT);
         CompletableFuture<PlayerTierProfile> profileFuture = NAME_PROFILE_CACHE.computeIfAbsent(cacheKey, ignored -> fetchByName(name));
@@ -62,19 +70,26 @@ public final class TierDataCache {
     }
 
     public static Optional<PlayerTierProfile> getBestEffort(UUID uuid, String name, boolean demoData) {
+        Optional<PlayerTierProfile> byName = getByName(name, demoData);
+        if (byName.map(PlayerTierProfile::hasAnyData).orElse(false)) {
+            uuidAlias(uuid, byName.get());
+            return byName;
+        }
+
         Optional<PlayerTierProfile> byUuid = get(uuid, name, demoData);
         if (byUuid.map(PlayerTierProfile::hasAnyData).orElse(false)) {
             return byUuid;
         }
-
-        Optional<PlayerTierProfile> byName = getByName(name, demoData);
-        if (byName.map(PlayerTierProfile::hasAnyData).orElse(false)) {
-            return byName;
+        if (isMinecraftName(name) && isNameLookupPending(name)) {
+            return Optional.empty();
         }
         return byUuid.isPresent() ? byUuid : byName;
     }
 
     public static Optional<UUID> uuidForName(String name) {
+        if (!isMinecraftName(name)) {
+            return Optional.empty();
+        }
         CompletableFuture<Optional<UUID>> uuidFuture = uuidFuture(name);
         if (!uuidFuture.isDone() || uuidFuture.isCompletedExceptionally()) {
             return Optional.empty();
@@ -143,6 +158,10 @@ public final class TierDataCache {
                 }));
     }
 
+    public static boolean isMinecraftName(String name) {
+        return name != null && USERNAME_PATTERN.matcher(name).matches();
+    }
+
     private static CompletableFuture<String> fetchMctiersTopName() {
         return fetchJson("https://mctiers.com/api/tier/overall?count=1")
                 .thenApply(json -> json.flatMap(object -> {
@@ -169,6 +188,17 @@ public final class TierDataCache {
     private static CompletableFuture<Optional<UUID>> uuidFuture(String name) {
         String cacheKey = name.toLowerCase(Locale.ROOT);
         return NAME_CACHE.computeIfAbsent(cacheKey, ignored -> resolveUuid(name));
+    }
+
+    private static boolean isNameLookupPending(String name) {
+        CompletableFuture<PlayerTierProfile> future = NAME_PROFILE_CACHE.get(name.toLowerCase(Locale.ROOT));
+        return future != null && !future.isDone();
+    }
+
+    private static void uuidAlias(UUID uuid, PlayerTierProfile profile) {
+        if (uuid != null && profile.hasAnyData()) {
+            CACHE.put(uuid, CompletableFuture.completedFuture(profile));
+        }
     }
 
     private static CompletableFuture<PlayerTierProfile> fetchByName(String name) {
@@ -271,31 +301,64 @@ public final class TierDataCache {
                 break;
             }
         }
-        if (element == null || !element.isJsonObject()) {
+        if (element == null) {
+            return Optional.empty();
+        }
+        if (element.isJsonPrimitive()) {
+            return tierLiteral(element.getAsString(), mode);
+        }
+        if (!element.isJsonObject()) {
             return Optional.empty();
         }
 
         JsonObject object = element.getAsJsonObject();
-        if (!object.has("tier") || !object.has("pos")) {
+        if (!object.has("tier")) {
             return Optional.empty();
         }
 
         String tier = object.get("tier").getAsString();
+        Optional<TierEntry> literal = tierLiteral(tier, mode);
+        if (literal.isPresent()) {
+            return literal;
+        }
+        if (!object.has("pos")) {
+            return Optional.empty();
+        }
+
         String pos = object.get("pos").getAsString();
         String retired = object.has("retired") && !object.get("retired").isJsonNull() ? object.get("retired").getAsString() : "false";
-        String prefix = "0".equals(pos) ? "HT" : "LT";
+        String prefix = highTierPosition(pos) ? "HT" : "LT";
         String displayed = ("true".equalsIgnoreCase(retired) ? "R" : "") + prefix + tier;
         return Optional.of(new TierEntry(displayed.toUpperCase(Locale.ROOT), mode));
     }
 
     private static String[] keysFor(TierSource source, GameMode mode) {
         if (source == TierSource.MCTIERS && mode == GameMode.NETH_POT) {
-            return new String[]{"neth_op", mode.apiKey};
+            return new String[]{"nethop", "neth_op", mode.apiKey};
         }
         if (source == TierSource.MCTIERS && mode == GameMode.CRYSTAL) {
             return new String[]{"vanilla", mode.apiKey};
         }
         return new String[]{mode.apiKey};
+    }
+
+    private static Optional<TierEntry> tierLiteral(String tier, GameMode mode) {
+        if (tier == null) {
+            return Optional.empty();
+        }
+        String normalized = tier.toUpperCase(Locale.ROOT)
+                .replace(" ", "")
+                .replace("_", "")
+                .replace("-", "");
+        if (normalized.matches("R?(HT|LT)[1-5]")) {
+            return Optional.of(new TierEntry(normalized, mode));
+        }
+        return Optional.empty();
+    }
+
+    private static boolean highTierPosition(String pos) {
+        String normalized = pos == null ? "" : pos.trim().toUpperCase(Locale.ROOT);
+        return "0".equals(normalized) || "HT".equals(normalized) || "HIGH".equals(normalized);
     }
 
     private static void parseSubtier(Optional<JsonObject> json, PlayerTierProfile profile) {
@@ -306,6 +369,12 @@ public final class TierDataCache {
                     profile.subtier(element.getAsString().toUpperCase(Locale.ROOT));
                     return;
                 }
+            }
+
+            JsonElement rankings = object.get("rankings");
+            if (rankings != null && rankings.isJsonObject() && !rankings.getAsJsonObject().isEmpty()) {
+                profile.subtier("S");
+                return;
             }
 
             PlayerTierProfile subtierProfile = new PlayerTierProfile();

@@ -72,7 +72,7 @@ public final class TierTextFormatter {
         return text;
     }
 
-    private static Optional<PlayerTierProfile> profileFor(UUID uuid, String fallbackName, Text visibleName) {
+    public static Optional<PlayerTierProfile> profileFor(UUID uuid, String fallbackName, Text visibleName) {
         Optional<PlayerTierProfile> firstResolved = Optional.empty();
         LinkedHashSet<String> candidates = nameCandidates(fallbackName, visibleName);
 
