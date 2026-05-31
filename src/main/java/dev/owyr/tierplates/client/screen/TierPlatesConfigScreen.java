@@ -46,6 +46,7 @@ public final class TierPlatesConfigScreen extends Screen {
     private static final int WARM = 0xFFECA461;
     private static final int GREEN = 0xFF8DFFB0;
     private static final int PIPE = 0xFFDADADA;
+    private static final String DEFAULT_PREVIEW_PLAYER = "ItzRealMe";
     private static final String[] TIER_ORDER = {"HT1", "LT1", "HT2", "LT2", "HT3", "LT3", "HT4", "LT4", "HT5", "LT5"};
     private static final int[] EDIT_COLORS = {
             0xE1BB4A, 0xD0B45E, 0xC7D3E6, 0xA1A7B1, 0xECA461,
@@ -155,7 +156,7 @@ public final class TierPlatesConfigScreen extends Screen {
             config.useDemoData = !config.useDemoData;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "Preview Player", () -> config.previewOwnPlayer ? "ME" : config.previewPlayerName, () -> {
+        addOption(rightX + colW + gap, y, colW, "Preview Player", () -> config.previewOwnPlayer ? "ME" : previewDisplayName(config), () -> {
             config.previewOwnPlayer = !config.previewOwnPlayer;
             saveAndRefresh();
         });
@@ -247,7 +248,7 @@ public final class TierPlatesConfigScreen extends Screen {
             config.useDemoData = !config.useDemoData;
             saveAndRefresh();
         });
-        addOption(rightX + colW + gap, y, colW, "Preview", () -> config.previewOwnPlayer ? "ME" : config.previewPlayerName, () -> {
+        addOption(rightX + colW + gap, y, colW, "Preview", () -> config.previewOwnPlayer ? "ME" : previewDisplayName(config), () -> {
             config.previewOwnPlayer = !config.previewOwnPlayer;
             saveAndRefresh();
         });
@@ -510,10 +511,7 @@ public final class TierPlatesConfigScreen extends Screen {
         if (config.previewOwnPlayer && minecraft.player != null) {
             return minecraft.player.getNameForScoreboard();
         }
-        if (config.previewPlayerName != null && !config.previewPlayerName.isBlank()) {
-            return config.previewPlayerName;
-        }
-        return TierDataCache.mctiersTopName().orElse("MCTiers #1");
+        return previewDisplayName(config);
     }
 
     private Optional<PlayerTierProfile> previewProfile(TierPlatesConfig config, String previewName) {
@@ -521,10 +519,14 @@ public final class TierPlatesConfigScreen extends Screen {
         if (config.previewOwnPlayer && minecraft.player != null) {
             return TierDataCache.get(minecraft.player.getUuid(), previewName, config.useDemoData);
         }
-        if (previewName.equals("MCTiers #1")) {
-            return Optional.empty();
-        }
         return TierDataCache.getByName(previewName, config.useDemoData);
+    }
+
+    private static String previewDisplayName(TierPlatesConfig config) {
+        if (config.previewPlayerName != null && !config.previewPlayerName.isBlank()) {
+            return config.previewPlayerName;
+        }
+        return DEFAULT_PREVIEW_PLAYER;
     }
 
     private Optional<SkinTextures> skinTextures(String name, boolean ownPlayer) {
@@ -540,10 +542,7 @@ public final class TierPlatesConfigScreen extends Screen {
             return Optional.of(minecraft.getSkinProvider().supplySkinTextures(minecraft.player.getGameProfile(), true).get());
         }
 
-        String previewName = name == null || name.isBlank() ? "ItzRealMe" : name;
-        if (previewName.equals("MCTiers #1")) {
-            return Optional.empty();
-        }
+        String previewName = name == null || name.isBlank() ? DEFAULT_PREVIEW_PLAYER : name;
         UUID fallbackUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + previewName).getBytes(StandardCharsets.UTF_8));
         Optional<UUID> resolvedUuid = TierDataCache.uuidForName(previewName);
         if (resolvedUuid.isEmpty()) {

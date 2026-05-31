@@ -16,7 +16,7 @@ public class TierPlatesConfig {
     public boolean drawBackground = true;
     public boolean useDemoData = false;
     public boolean previewOwnPlayer = false;
-    public String previewPlayerName = "";
+    public String previewPlayerName = "ItzRealMe";
     public TierColors tierColors = new TierColors();
 
     public enum Side {
