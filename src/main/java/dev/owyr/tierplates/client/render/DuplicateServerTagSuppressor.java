@@ -1,0 +1,114 @@
+package dev.owyr.tierplates.client.render;
+
+import dev.owyr.tierplates.client.TierPlatesClient;
+import dev.owyr.tierplates.client.config.TierPlatesConfig;
+import dev.owyr.tierplates.client.data.PlayerTierProfile;
+import dev.owyr.tierplates.client.data.TierDataCache;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
+
+import java.util.Locale;
+import java.util.Optional;
+
+public final class DuplicateServerTagSuppressor {
+    private static final double MAX_HORIZONTAL_DISTANCE_SQUARED = 1.55D;
+    private static final double MIN_VERTICAL_OFFSET = 1.15D;
+    private static final double MAX_VERTICAL_OFFSET = 3.45D;
+
+    private DuplicateServerTagSuppressor() {
+    }
+
+    public static boolean shouldHide(double x, double y, double z, Text label) {
+        TierPlatesConfig config = TierPlatesClient.config();
+        if (!config.enabled || !config.showNametags || !config.hideDuplicateServerTags || label == null) {
+            return false;
+        }
+
+        String plainLabel = label.getString();
+        if (!looksLikeNameTagLine(plainLabel)) {
+            return false;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientWorld world = client.world;
+        if (world == null || client.player == null) {
+            return false;
+        }
+
+        for (PlayerEntity player : world.getPlayers()) {
+            if (!isRelevantPlayer(client, player)) {
+                continue;
+            }
+            double dy = y - player.getY();
+            if (dy < MIN_VERTICAL_OFFSET || dy > MAX_VERTICAL_OFFSET) {
+                continue;
+            }
+            double dx = x - player.getX();
+            double dz = z - player.getZ();
+            if (dx * dx + dz * dz > MAX_HORIZONTAL_DISTANCE_SQUARED) {
+                continue;
+            }
+            if (matchesPlayerLine(plainLabel, player) || hasTierData(player)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean isRelevantPlayer(MinecraftClient client, PlayerEntity player) {
+        return player != null
+                && player.isAlive()
+                && !player.isInvisibleTo(client.player);
+    }
+
+    private static boolean hasTierData(PlayerEntity player) {
+        Optional<PlayerTierProfile> profile = TierDataCache.getBestEffort(player.getUuid(), player.getNameForScoreboard(), false);
+        return profile.map(PlayerTierProfile::hasAnyData).orElse(false);
+    }
+
+    private static boolean matchesPlayerLine(String label, PlayerEntity player) {
+        String normalized = normalize(label);
+        return containsName(normalized, player.getNameForScoreboard())
+                || containsName(normalized, player.getName().getString())
+                || containsName(normalized, player.getDisplayName().getString());
+    }
+
+    private static boolean containsName(String normalizedLabel, String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String normalizedName = normalize(name);
+        return !normalizedName.isBlank() && normalizedLabel.contains(normalizedName);
+    }
+
+    private static boolean looksLikeNameTagLine(String label) {
+        if (label == null || label.isBlank()) {
+            return false;
+        }
+
+        String trimmed = label.trim();
+        if (trimmed.length() > 48) {
+            return false;
+        }
+
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        return !lower.contains("http://")
+                && !lower.contains("https://")
+                && !lower.contains("click")
+                && !lower.contains("join");
+    }
+
+    private static String normalize(String value) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isLetterOrDigit(c) || c == '_') {
+                builder.append(Character.toLowerCase(c));
+            }
+        }
+        return builder.toString();
+    }
+}

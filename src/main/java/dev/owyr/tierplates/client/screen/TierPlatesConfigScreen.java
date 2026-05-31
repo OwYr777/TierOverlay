@@ -203,6 +203,12 @@ public final class TierPlatesConfigScreen extends Screen {
             config.showNameInNametag = !config.showNameInNametag;
             saveAndRefresh();
         });
+
+        y += row;
+        addWideOption(x, y, colW * 2 + gap, "Extra Server Tags", () -> config.hideDuplicateServerTags ? "HIDE" : "SHOW", () -> {
+            config.hideDuplicateServerTags = !config.hideDuplicateServerTags;
+            saveAndRefresh();
+        });
     }
 
     @Override

@@ -4,6 +4,8 @@
   "plugin": "dev.owyr.tierplates.client.mixin.TierPlatesMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ArmorStandEntityRendererMixin",
+    "TextDisplayEntityRendererMixin",
     "PlayerEntityRendererMixin",
     "PlayerListHudMixin",
     "ChatHudMixin",

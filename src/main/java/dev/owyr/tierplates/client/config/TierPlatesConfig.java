@@ -13,6 +13,7 @@ public class TierPlatesConfig {
     public boolean forceNameplates = false;
     public NameplateMode nameplateMode = NameplateMode.OWN_F5;
     public boolean showNameInNametag = true;
+    public boolean hideDuplicateServerTags = true;
     public boolean drawBackground = true;
     public boolean useDemoData = false;
     public boolean previewOwnPlayer = false;
