@@ -493,7 +493,7 @@ public final class TierPlatesConfigScreen extends Screen {
     private Optional<PlayerTierProfile> previewProfile(TierPlatesConfig config, String previewName) {
         MinecraftClient minecraft = MinecraftClient.getInstance();
         if (config.previewOwnPlayer && minecraft.player != null) {
-            return TierDataCache.get(minecraft.player.getUuid(), previewName, config.useDemoData);
+            return TierDataCache.getBestEffort(minecraft.player.getUuid(), minecraft.player.getNameForScoreboard(), config.useDemoData);
         }
         if (DEFAULT_PREVIEW_PLAYER.equalsIgnoreCase(previewName)) {
             return TierDataCache.get(DEFAULT_PREVIEW_UUID, DEFAULT_PREVIEW_PLAYER, config.useDemoData);

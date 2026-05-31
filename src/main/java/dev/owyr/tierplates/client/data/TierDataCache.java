@@ -22,6 +22,7 @@ public final class TierDataCache {
             .build();
     private static final Map<UUID, CompletableFuture<PlayerTierProfile>> CACHE = new ConcurrentHashMap<>();
     private static final Map<String, CompletableFuture<Optional<UUID>>> NAME_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, CompletableFuture<PlayerTierProfile>> NAME_PROFILE_CACHE = new ConcurrentHashMap<>();
     private static CompletableFuture<String> mctiersTopName;
 
     private TierDataCache() {
@@ -30,6 +31,7 @@ public final class TierDataCache {
     public static void clear() {
         CACHE.clear();
         NAME_CACHE.clear();
+        NAME_PROFILE_CACHE.clear();
         mctiersTopName = null;
     }
 
@@ -50,11 +52,12 @@ public final class TierDataCache {
             return Optional.of(demoProfile(name));
         }
 
-        CompletableFuture<Optional<UUID>> uuidFuture = uuidFuture(name);
-        if (!uuidFuture.isDone() || uuidFuture.isCompletedExceptionally()) {
+        String cacheKey = name.toLowerCase(Locale.ROOT);
+        CompletableFuture<PlayerTierProfile> profileFuture = NAME_PROFILE_CACHE.computeIfAbsent(cacheKey, ignored -> fetchByName(name));
+        if (!profileFuture.isDone() || profileFuture.isCompletedExceptionally()) {
             return Optional.empty();
         }
-        return uuidFuture.getNow(Optional.empty()).flatMap(uuid -> get(uuid, name, false));
+        return Optional.ofNullable(profileFuture.getNow(null));
     }
 
     public static Optional<PlayerTierProfile> getBestEffort(UUID uuid, String name, boolean demoData) {
@@ -167,6 +170,17 @@ public final class TierDataCache {
         return NAME_CACHE.computeIfAbsent(cacheKey, ignored -> resolveUuid(name));
     }
 
+    private static CompletableFuture<PlayerTierProfile> fetchByName(String name) {
+        return uuidFuture(name).thenCompose(uuid -> uuid
+                .map(value -> fetch(value).thenApply(profile -> {
+                    if (profile.hasAnyData()) {
+                        CACHE.put(value, CompletableFuture.completedFuture(profile));
+                    }
+                    return profile;
+                }))
+                .orElseGet(() -> CompletableFuture.completedFuture(new PlayerTierProfile())));
+    }
+
     private static Optional<UUID> uuidFromCompact(String compactUuid) {
         if (compactUuid == null || compactUuid.length() != 32) {
             return Optional.empty();
@@ -202,7 +216,7 @@ public final class TierDataCache {
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(4))
                 .header("Accept", "application/json")
-                .header("User-Agent", "TierPlates/0.1")
+                .header("User-Agent", "TierOverlay/1.0.0")
                 .GET()
                 .build();
 
