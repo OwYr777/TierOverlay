@@ -68,20 +68,13 @@ public final class TierTextFormatter {
         }
 
         String plain = message.getString();
+        List<StyledSegment> segments = styledSegments(message);
         List<Replacement> replacements = new ArrayList<>();
         for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
             String name = entry.getProfile().name();
-            if (plain.startsWith("<" + name + ">")) {
-                Text decoratedName = decorateInlineName(entry.getProfile().id(), name, Text.literal(name));
-                return Text.literal("<").append(decoratedName).append(Text.literal(">" + plain.substring(name.length() + 2)));
-            }
-            if (plain.startsWith(name + ":")) {
-                Text decoratedName = decorateInlineName(entry.getProfile().id(), name, Text.literal(name));
-                return decoratedName.copy().append(Text.literal(plain.substring(name.length())));
-            }
             Text decoratedName = decorateInlineName(entry.getProfile().id(), name, Text.literal(name));
             if (!decoratedName.getString().equals(name)) {
-                collectNameReplacements(plain, name, decoratedName, replacements);
+                collectNameReplacements(plain, name, entry.getProfile().id(), replacements);
             }
         }
 
@@ -97,26 +90,72 @@ public final class TierTextFormatter {
                 continue;
             }
             if (replacement.start() > cursor) {
-                decorated.append(Text.literal(plain.substring(cursor, replacement.start())));
+                appendStyledRange(decorated, segments, plain, cursor, replacement.start());
             }
-            decorated.append(replacement.text());
+            Style nameStyle = styleAt(segments, replacement.start());
+            decorated.append(decorateInlineName(replacement.uuid(), replacement.name(), Text.literal(replacement.name()).setStyle(nameStyle)));
             cursor = replacement.end();
         }
         if (cursor < plain.length()) {
-            decorated.append(Text.literal(plain.substring(cursor)));
+            appendStyledRange(decorated, segments, plain, cursor, plain.length());
         }
         return decorated;
     }
 
-    private static void collectNameReplacements(String plain, String name, Text decoratedName, List<Replacement> replacements) {
+    private static void collectNameReplacements(String plain, String name, UUID uuid, List<Replacement> replacements) {
         int index = plain.indexOf(name);
         while (index >= 0) {
             int end = index + name.length();
             if (isNameBoundary(plain, index - 1) && isNameBoundary(plain, end)) {
-                replacements.add(new Replacement(index, end, decoratedName));
+                replacements.add(new Replacement(index, end, uuid, name));
             }
             index = plain.indexOf(name, end);
         }
+    }
+
+    private static List<StyledSegment> styledSegments(Text message) {
+        List<StyledSegment> segments = new ArrayList<>();
+        int[] cursor = {0};
+        message.visit((style, string) -> {
+            if (!string.isEmpty()) {
+                segments.add(new StyledSegment(cursor[0], cursor[0] + string.length(), string, style));
+                cursor[0] += string.length();
+            }
+            return Optional.empty();
+        }, Style.EMPTY);
+        return segments;
+    }
+
+    private static void appendStyledRange(MutableText target, List<StyledSegment> segments, String plain, int start, int end) {
+        if (start >= end) {
+            return;
+        }
+        if (segments.isEmpty()) {
+            target.append(Text.literal(plain.substring(start, end)));
+            return;
+        }
+        for (StyledSegment segment : segments) {
+            if (segment.end() <= start) {
+                continue;
+            }
+            if (segment.start() >= end) {
+                break;
+            }
+            int localStart = Math.max(start, segment.start()) - segment.start();
+            int localEnd = Math.min(end, segment.end()) - segment.start();
+            if (localEnd > localStart) {
+                target.append(Text.literal(segment.text().substring(localStart, localEnd)).setStyle(segment.style()));
+            }
+        }
+    }
+
+    private static Style styleAt(List<StyledSegment> segments, int position) {
+        for (StyledSegment segment : segments) {
+            if (position >= segment.start() && position < segment.end()) {
+                return segment.style();
+            }
+        }
+        return Style.EMPTY;
     }
 
     private static boolean isNameBoundary(String plain, int index) {
@@ -166,6 +205,9 @@ public final class TierTextFormatter {
         return colors == null ? 0xFFFFFF : colors.get(tier);
     }
 
-    private record Replacement(int start, int end, Text text) {
+    private record Replacement(int start, int end, UUID uuid, String name) {
+    }
+
+    private record StyledSegment(int start, int end, String text, Style style) {
     }
 }
