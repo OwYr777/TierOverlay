@@ -1,3 +1,5 @@
 {
-  "category.tierplates": "TierPlates"
+  "category.tierplates": "TierPlates",
+  "key.categories.tierplates.tierplates": "TierPlates",
+  "key.tierplates.open_settings": "Open TierPlates settings"
 }
