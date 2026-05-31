@@ -1,11 +1,13 @@
 {
   "required": true,
   "package": "dev.owyr.tierplates.client.mixin",
+  "plugin": "dev.owyr.tierplates.client.mixin.TierPlatesMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "PlayerEntityRendererMixin",
     "PlayerListHudMixin",
-    "ChatHudMixin"
+    "ChatHudMixin",
+    "BetterTabToolsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

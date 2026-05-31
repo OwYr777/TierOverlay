@@ -17,11 +17,23 @@ import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class TierTextFormatter {
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("(?<![A-Za-z0-9_])[A-Za-z0-9_]{3,16}(?![A-Za-z0-9_])");
+    private static final Set<String> NON_PLAYER_TOKENS = Set.of(
+            "admin", "builder", "clan", "default", "echt", "friend", "freunde", "global", "guild",
+            "level", "member", "mod", "none", "owner", "party", "rank", "rang", "spieler", "staff",
+            "stray", "team", "vip"
+    );
+
     private TierTextFormatter() {
     }
 
@@ -35,11 +47,11 @@ public final class TierTextFormatter {
 
     private static Text decorateInlineName(UUID uuid, String fallbackName, Text vanillaName) {
         TierPlatesConfig config = TierPlatesClient.config();
-        if (!config.enabled || uuid == null) {
+        if (!config.enabled) {
             return vanillaName;
         }
 
-        Optional<PlayerTierProfile> optionalProfile = TierDataCache.getBestEffort(uuid, fallbackName, false);
+        Optional<PlayerTierProfile> optionalProfile = profileFor(uuid, fallbackName, vanillaName);
         if (optionalProfile.isEmpty()) {
             return vanillaName;
         }
@@ -58,6 +70,55 @@ public final class TierTextFormatter {
         text.append(Text.literal(" |").setStyle(Style.EMPTY.withColor(0xDADADA)));
         right.ifPresent(entry -> text.append(" ").append(badge(entry, config.showIcons)));
         return text;
+    }
+
+    private static Optional<PlayerTierProfile> profileFor(UUID uuid, String fallbackName, Text visibleName) {
+        Optional<PlayerTierProfile> firstResolved = Optional.empty();
+        LinkedHashSet<String> candidates = nameCandidates(fallbackName, visibleName);
+
+        if (uuid != null && isPlayerName(fallbackName)) {
+            Optional<PlayerTierProfile> byUuid = TierDataCache.getBestEffort(uuid, fallbackName, false);
+            if (byUuid.map(PlayerTierProfile::hasAnyData).orElse(false)) {
+                return byUuid;
+            }
+            firstResolved = byUuid;
+        }
+
+        for (String candidate : candidates) {
+            Optional<PlayerTierProfile> byName = TierDataCache.getByName(candidate, false);
+            if (byName.map(PlayerTierProfile::hasAnyData).orElse(false)) {
+                return byName;
+            }
+            if (firstResolved.isEmpty()) {
+                firstResolved = byName;
+            }
+        }
+
+        return firstResolved;
+    }
+
+    private static LinkedHashSet<String> nameCandidates(String fallbackName, Text visibleName) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        if (isPlayerName(fallbackName)) {
+            candidates.add(fallbackName);
+        }
+
+        String plain = visibleName == null ? "" : visibleName.getString();
+        Matcher matcher = USERNAME_PATTERN.matcher(plain);
+        while (matcher.find()) {
+            String candidate = matcher.group();
+            if (isPlayerName(candidate)) {
+                candidates.add(candidate);
+            }
+        }
+        return candidates;
+    }
+
+    private static boolean isPlayerName(String value) {
+        if (value == null || !USERNAME_PATTERN.matcher(value).matches()) {
+            return false;
+        }
+        return !NON_PLAYER_TOKENS.contains(value.toLowerCase(Locale.ROOT));
     }
 
     public static Text decorateChatMessage(Text message) {

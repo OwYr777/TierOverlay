@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
@@ -175,6 +176,7 @@ public final class TierDataCache {
                 .map(value -> fetch(value).thenApply(profile -> {
                     if (profile.hasAnyData()) {
                         CACHE.put(value, CompletableFuture.completedFuture(profile));
+                        requestTabRefresh();
                     }
                     return profile;
                 }))
@@ -209,7 +211,23 @@ public final class TierDataCache {
         CompletableFuture<Void> subtiers = fetchJson("https://subtiers.net/api/profile/" + compactUuid)
                 .thenAccept(json -> parseSubtier(json, profile));
 
-        return CompletableFuture.allOf(mctiers, pvptiers, subtiers).handle((ignored, throwable) -> profile);
+        return CompletableFuture.allOf(mctiers, pvptiers, subtiers).handle((ignored, throwable) -> {
+            if (profile.hasAnyData()) {
+                requestTabRefresh();
+            }
+            return profile;
+        });
+    }
+
+    private static void requestTabRefresh() {
+        try {
+            Class<?> renderer = Class.forName("tab.bettertab.tabList.TabRenderer", false, TierDataCache.class.getClassLoader());
+            Field field = renderer.getDeclaredField("immediatelyUpdate");
+            field.setAccessible(true);
+            field.setBoolean(null, true);
+        } catch (Throwable ignored) {
+            // BetterTab is optional; vanilla tab rendering updates every frame anyway.
+        }
     }
 
     private static CompletableFuture<Optional<JsonObject>> fetchJson(String url) {
